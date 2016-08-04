@@ -1,5 +1,7 @@
 # TODO: Need to write header to data file.
 # TODO: Need to figure out what data to write to the data file, clean up the user options (go for simple for this initial release)
+# TODO: Warn if a target is incompletely masked.
+# TODO: Notify in data file if any components had to be resampled.
 # TODO: Test
 
 
@@ -29,6 +31,9 @@ compressionValue = 0.35
 
 # Sampling frequency
 sr = 44100
+
+# Duration of ramps on joining ends of concatenants.
+concatenationRampDuration = 0.005
 
 # Select and validate the input trial table
 itemTableFile$ = chooseReadFile$: "Select tab-delimited trial table..."
@@ -292,6 +297,10 @@ for currentItem to nRows
 	stimStereo = Combine to stereo
 	stim = Convert to mono
 	removeObject: frontEnd, backEnd, stimStereo
+	# Scale final intensity to global spec.
+	if normalizeTo
+		Scale intensity: normalizeTo
+	endif
 
 	# Write stim to WAV and data to the output file
 	Write to WAV file: outDir$ + "/" + itemName$ + ".wav"
