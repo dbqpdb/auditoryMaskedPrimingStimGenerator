@@ -1,4 +1,4 @@
-# DupouxKouider.praat
+# auditoryMaskedPrimingStimGenerator.praat
 # V0.9, testing release
 # This script is run within Praat, not from the command line.
 # It will prompt for an input tab-separated trial table
