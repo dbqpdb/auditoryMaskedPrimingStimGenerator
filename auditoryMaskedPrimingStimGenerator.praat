@@ -108,29 +108,37 @@ endif
 
 # Note: the file browser warns if the file already exists.
 outputDataFile$ = chooseWriteFile$: "Choose output data file, dataphile...", "FileyMcFileface.txt"
+if outputDataFile$ == ""
+	exitScript: "You didn't select an output file. I can't write to nothing."
+endif
 outDir$ = replace_regex$(outputDataFile$, "[^/]+$", "", 1)
 
 # Set defaults based on trial table columns, and then let the user over-ride using the form.
 # Axe the user for necessary tidbits
 beginPause: "Options 1/2"
-	comment: "Note: Input component sound files are expected"
-	comment: "in the directory of the trial table you selected."
+	comment: "FILE LOCATIONS: Input component sound files are expected"
+	comment: "in the directory of the trial table you selected,"
+	comment: "and output sound files will go in the directory"
+	comment: "of the data file you chose to write to."
 
-	comment: "Normalize input audio files to...?"
-	comment: "Default is ""0"", for no normalization (not 0dB)."
-	comment: "Nonzero values are interpreted as deciBel levels."
-	comment: "Praat's standard intensity scaling is to 70dB."
+	comment: "INTENSITY NORMALIZATION"
+	comment: "Default is ""0"", for no normalization (not 0dB);"
+	comment: "nonzero values are interpreted as deciBel levels;"
+	comment: "Praat's standard intensity scaling is to 70dB"
 	real: "NormalizeTo", normalizeTo
 
+	comment: "PRIME/MASK INTENSITY ATTENUATION"
 	comment: "How much (dB) shall I attenuate the intensity"
 	comment: "of masks and primes?"
-	real: "Quietness", 15
+	real: "Quietness", quietness
 
+	comment: "BACKWARD MASKS"
 	comment: "How many backward masks should I expect for each item?"
 	natural: "NumberOfBkwdMasks", numBkwdMasks
 
 	# Change the number two lines down to 1 to make
 	# the script default to 
+	comment: "COMPRESS to RATIO/DURATION?"
 	comment: "Compress primes and masks to ratio or duration?"
 	choice: "RatioOrDuration", ratioOrDuration
 		option: "Compression ratio"
@@ -152,19 +160,25 @@ else
 endif
 
 beginPause: "Options 2/2"
-	comment: "Compression type: " + compressionType$
+	comment: "COMPRESSION " + replace_regex$(compressionType$, ".*", "\U&",1)
 	comment: "Enter the compression " + compressionType$
 	real: "CompressionValue", compressionValue
 
+	comment: "CONCATENATION RAMPING"
 	comment: "How much time should I ramp the joining"
 	comment: "ends of concatenants? Enter ""0"" for"
 	comment: "no ramping."
 	real: "CatRampDur", catRampDur
 
+	comment: "COMPONENT/STIMULUS SAMPLING RATE"
+	integer: "sr", sr
+
+	comment: "PSOLA MIN PITCH"
 	comment: "Min pitch for the duration compression"
 	comment: "resynthesis."
 	real: "MinResynthPitch", minResynthPitch
 
+	comment: "PSOLA MAX PITCH"
 	comment: "Max pitch for the duration compression"
 	comment: "resynthesis."
 	real: "MaxResynthPitch", maxResynthPitch
