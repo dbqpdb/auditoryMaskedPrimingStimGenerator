@@ -171,6 +171,11 @@ else
 	compressionType$ = "ratio"
 	compressionValue = compressionValueRatio
 endif
+# Set prime compression defaults the same
+# User can make masks and primes compress
+# differently in the "extra options" window
+primeCompressionType$ = compressionType$
+primeCompressionValue = compressionValue
 
 beginPause: "Options 2/2"
 	comment: "COMPRESSION " + replace_regex$(compressionType$, ".*", "\U&",1)
@@ -198,18 +203,20 @@ if clicked == 2
 	exitScript: "No'rries. Later, gator!"
 elsif clicked == 1
 	beginPause: "Extra options"
+		comment: "PRIME COMPRESSION"
+		comment: "Prime compression settings if different from masks"
+		choice: "primeRatioOrDuration", ratioOrDuration
+			option: "Compression ratio"
+			option: "Fixed duration"
+		real: "primeCompressionValue", primeCompressionValue
+
 		comment: "BACKWARD MASKS"
 		comment: "How many backward masks should I use for each item?"
 		natural: "NumberOfBkwdMasks", numBkwdMasks
 
-		comment: "PSOLA MIN PITCH"
-		comment: "Min pitch for the duration compression"
-		comment: "resynthesis."
+		comment: "PSOLA PITCH SETTINGS"
+		comment: "Pitch range for the duration compression"
 		real: "MinResynthPitch", minResynthPitch
-
-		comment: "PSOLA MAX PITCH"
-		comment: "Max pitch for the duration compression"
-		comment: "resynthesis."
 		real: "MaxResynthPitch", maxResynthPitch
 
 		comment: "TROUBLESHOOTING"
@@ -224,6 +231,11 @@ elsif clicked == 1
 	if clicked == 1
 		removeObject: itemTable
 		exitScript: "No'rries. Later, gator!"
+	endif
+	if primeRatioOrDuration == 2
+		primeCompressionType$ = "duration"
+	else
+		primeCompressionType$ = "ratio"
 	endif
 
 	# If the user said more backward masks than we
@@ -257,7 +269,7 @@ endif
 #~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
 
 # Write the header to the output data file.
-header$ = "TrialTable" + tab$ + "Date" + tab$ + "Item" + tab$ + "ForwardMask" + tab$ + "Prime" + tab$ + "Target" + tab$ + "BackwardMasks" + tab$ + "PrimeOnset" + tab$ + "TargetOnset" + tab$ + "TargetOffset" + tab$ + "BwmDur" + tab$ + "StimDur" + tab$ + "CompressType" + tab$ + "CompressValue" + tab$ + "SamplingRate" + tab$ + "Intensity" + tab$ + "CatRampDur" + tab$ + "MinPitch" + tab$ + "MaxPitch" + tab$ + "Quietness" + tab$ + "Notes"
+header$ = "TrialTable" + tab$ + "Date" + tab$ + "Item" + tab$ + "ForwardMask" + tab$ + "Prime" + tab$ + "Target" + tab$ + "BackwardMasks" + tab$ + "PrimeOnset" + tab$ + "TargetOnset" + tab$ + "TargetOffset" + tab$ + "BwmDur" + tab$ + "StimDur" + tab$ + "MaskCompressType" + tab$ + "MaskCompressValue" + tab$ + "PrimeCompressType" + tab$ + "PrimeCompressValue" + tab$ + "SamplingRate" + tab$ + "Intensity" + tab$ + "CatRampDur" + tab$ + "MinPitch" + tab$ + "MaxPitch" + tab$ + "Quietness" + tab$ + "Notes"
 writeFileLine: outputDataFile$, header$
 
 
@@ -352,7 +364,7 @@ for currentItem to nRows
 	db = Get intensity (dB)
 	Scale intensity: db - quietness
 	Reverse
-	@compressDuration: fwm
+	@compressDuration: fwm, "mask"
 	fwm = compressDuration.compressed
 	Rename: "fwm_" + fwmName$
 	fwmDur = Get total duration
@@ -361,7 +373,7 @@ for currentItem to nRows
 	selectObject: prime
 	db = Get intensity (dB)
 	Scale intensity: db - quietness
-	@compressDuration: prime
+	@compressDuration: prime, "prime"
 	prime = compressDuration.compressed
 	Rename: "prime_" + primeName$
 	primeDur = Get total duration
@@ -377,7 +389,7 @@ for currentItem to nRows
 		db = Get intensity (dB)
 		Scale intensity: db - quietness
 		Reverse
-		@compressDuration: bwm[bwmIndex]
+		@compressDuration: bwm[bwmIndex], "mask"
 		bwm[bwmIndex] = compressDuration.compressed
 		Rename: "bwm" + string$(bwmIndex) + "_" + bwmName$[bwmIndex]
 		thisbwmDur = Get total duration
@@ -518,7 +530,7 @@ for currentItem to nRows
 	endif
 
 	# Add CompressionType, CompressionValue, SR, Intensity, CatRampDur
-	out$ = out$ + tab$ + compressionType$ + tab$ + string$(compressionValue) + tab$ + string$(sr) + tab$ + string$(intensity) + tab$ + string$(catRampDur) + tab$ + string$(minResynthPitch) + tab$ + string$(maxResynthPitch) + tab$ + string$(quietness) + tab$ + notes$
+	out$ = out$ + tab$ + compressionType$ + tab$ + string$(compressionValue) + tab$ + primeCompressionType$ + tab$ + string$(primeCompressionValue) + tab$ + string$(sr) + tab$ + string$(intensity) + tab$ + string$(catRampDur) + tab$ + string$(minResynthPitch) + tab$ + string$(maxResynthPitch) + tab$ + string$(quietness) + tab$ + notes$
 	# Write the line to the output file.
 	appendFileLine: outputDataFile$, out$
 	removeObject: stim
@@ -591,17 +603,25 @@ endproc
 # This proc removes the input object after
 # compression. The compressed object ID is
 # stored in .compressed .
-procedure compressDuration: .object
+procedure compressDuration: .object, .type$
 	selectObject: .object
 	.origDur = Get total duration
 	if compressionType$ == "duration"
-		.ratio = compressionValue / .origDur
+		if .type$ == "prime"
+			.ratio = primeCompressionValue / .origDur
+		else
+			.ratio = compressionValue / .origDur
+		endif
 		# the duration tier is in seconds
 		if timeUnit$ = "ms"
 			.ratio = .ratio / 1000
 		endif
 	elsif compressionType$ == "ratio"
-		.ratio = compressionValue
+		if .type$ == "prime"
+			.ratio = primeCompressionValue
+		else
+			.ratio = compressionValue
+		endif
 	else
 		exitScript: "Invalid compression type (global variable compressionType$). Valid values are ""duration"" or ""ratio""."
 	endif
