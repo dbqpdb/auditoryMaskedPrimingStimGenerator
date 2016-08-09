@@ -1,0 +1,33 @@
+# auditoryMaskedPrimingStimGenerator.praat
+# V0.999, testing release
+# This script is run within Praat, not from the command line.
+# It will prompt for
+#	@ an input tab-separated trial table
+#	@ an output data file to write to
+# It will read component sound files from
+# 	the directory of the trial table,
+# and write the output stimuli to the directory
+#	of the specified data file.
+
+# Original concoction implemented, with modifications,
+# from Dupoux & Kouider 2005 by Scott Jackson
+# Modified 2012 by KTS
+# Modified 2013 by SW
+# Modified 2016 by JG
+
+# Rewritten and documented Aug 2016
+# by db (brenner@ualberta.ca)
+
+# This software is provided with only the guarantee
+# that I've tried my best to create good code for
+# the purpose. Please send comments, bug reports,
+# feature requests, suggestions to the email above. --db
+
+# This software is provided under GNU General Public License:
+#	https://www.gnu.org/licenses/gpl.html
+# which means anyone is free to mess with this however
+# they please, for any purpose, be it personal, commercial,
+# spiritual, or whathaveyou.
+# All derivative software must also bear this licensing.
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+
