@@ -1,11 +1,13 @@
 # auditoryMaskedPrimingStimGenerator.praat
-# V0.9, testing release
+# V0.99, testing release
 # This script is run within Praat, not from the command line.
-# It will prompt for an input tab-separated trial table
-# and an output data file. It will read component
-# sound files from the directory of the trial table,
-# and write the output stimuli to the directory of the
-# specified data file.
+# It will prompt for
+#	@ an input tab-separated trial table
+#	@ an output data file to write to
+# It will read component sound files from
+# 	the directory of the trial table,
+# and write the output stimuli to the directory
+#	of the specified data file.
 
 # Original concoction implemented, with modifications,
 # from Dupoux & Kouider 2005 by Scott Jackson
@@ -31,9 +33,30 @@
 
 clearinfo
 
+
 #~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
-# Default settings
+# Default parameters & constants
 #~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+
+# Specify times in "s" seconds or "ms" milliseconds?
+# This converts all time variables  to that unit.
+# Make sure to make the default compression duration
+# "compressionValueDuration" and catRampDur below agree with
+# this unit e.g. if timeUnit$ is "s", maybe
+# compressionValueDuration is 0.250 (1/4 second), while if
+# timeUnit$ is "ms", compressionValueDuration would be 250 (ms).
+timeUnit$ = "ms"
+
+# Set ratioOrDuration to 1 to default to compression
+# to a ratio, or set to 2 to default to compress to
+# a fixed duration.
+ratioOrDuration = 1
+# Default ratio and duration
+compressionValueRatio = 0.35
+compressionValueDuration = 250
+
+# Duration of ramps on joining ends of concatenants.
+catRampDur = 5
 
 # Min and max pitch for "manipulate" and the
 # PSOLA duration compression resynthesis
@@ -43,18 +66,8 @@ maxResynthPitch = 600
 # dB to attenuate masks and prime
 quietness = 15
 
-# Set ratioOrDuration to 1 to default to compression
-# to a ratio, or set to 2 to default to compress to
-# a fixed duration.
-ratioOrDuration = 1
-# Default ratio or duration
-compressionValue = 0.35
-
 # Sampling frequency
 sr = 44100
-
-# Duration of ramps on joining ends of concatenants.
-catRampDur = 0.005
 
 # Default intensity normalization
 # Set to 0 for no normalization by default,
@@ -62,15 +75,20 @@ catRampDur = 0.005
 # normalization dB level.
 normalizeTo = 0
 
+# Whether the script should follow
+# special debugging options
+troubleShooting = 0
+
 #~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
 # I/O details
 #~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
 
 # Select and validate the input trial table
 itemTableFile$ = chooseReadFile$: "Select tab-delimited trial table..."
-if !fileReadable(itemTableFile$)
-	exitScript: "No readable trial table selected. Did you expect me to make one up myself? Aborting."
+if itemTableFile$ == "" | !fileReadable(itemTableFile$)
+	exitScript: "No readable trial table selected. Did you expect me to make one up myself?"
 endif
+# Strip the item table path to get the directory
 wavDir$ = replace_regex$(itemTableFile$, "[^/]+$", "", 1)
 
 itemTable = Read Table from tab-separated file: itemTableFile$
@@ -78,7 +96,8 @@ Rename: "TrialTable_" + itemTableFile$
 nRows = Get number of rows
 nCols = Get number of columns
 
-# Whether we're masking the stimuli or presenting them in the clear.
+# Validate the trial table and set
+# default options accordingly
 hasTargetCol = 0
 hasPrimeCol = 0
 hasItemNameCol = 0
@@ -102,7 +121,7 @@ for c to nCols
 endfor
 
 # Tell the user if something's immediately awry
-if !(hasFwdMaskCol & hasPrimeCol & hasTargetCol & numBkwdMasks > 0 & hasItemNameCol)
+if !(hasFwdMaskCol & hasPrimeCol & hasTargetCol & numBkwdMasks & hasItemNameCol)
 	exitScript: "Curses! I can't proceed without forward masks, primes, targets, backward masks, and output item names. Must have columns ""FwdMask"", ""Prime"", ""Target"", ""BkwdMask1"", and ""ItemName"". Aborting."
 endif
 
@@ -113,8 +132,12 @@ if outputDataFile$ == ""
 endif
 outDir$ = replace_regex$(outputDataFile$, "[^/]+$", "", 1)
 
+
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+# Axe the User
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+
 # Set defaults based on trial table columns, and then let the user over-ride using the form.
-# Axe the user for necessary tidbits
 beginPause: "Options 1/2"
 	comment: "FILE LOCATIONS: Input component sound files are expected"
 	comment: "in the directory of the trial table you selected,"
@@ -123,49 +146,43 @@ beginPause: "Options 1/2"
 
 	comment: "INTENSITY NORMALIZATION"
 	comment: "Default is ""0"", for no normalization (not 0dB);"
-	comment: "nonzero values are interpreted as deciBel levels;"
 	comment: "Praat's standard intensity scaling is to 70dB"
 	real: "NormalizeTo", normalizeTo
 
 	comment: "PRIME/MASK INTENSITY ATTENUATION"
-	comment: "How much (dB) shall I attenuate the intensity"
-	comment: "of masks and primes?"
+	comment: "How much (dB) should masks and primes be attenuated?"
 	real: "Quietness", quietness
 
-	comment: "BACKWARD MASKS"
-	comment: "How many backward masks should I expect for each item?"
-	natural: "NumberOfBkwdMasks", numBkwdMasks
-
-	# Change the number two lines down to 1 to make
-	# the script default to 
 	comment: "COMPRESS to RATIO/DURATION?"
 	comment: "Compress primes and masks to ratio or duration?"
 	choice: "RatioOrDuration", ratioOrDuration
 		option: "Compression ratio"
 		option: "Fixed duration"
-endPause: "More options!", 1
-
-# If the user said more backward masks than we
-# found in the trial table, complain.
-if numberOfBkwdMasks > numBkwdMasks
-	exitScript: "You've specified " + numberOfBkwdMasks + " but I only find " + numBkwdMasks + " backward mask columns. Check that they are all of the form ""BkwdMaskX"" where X counts up the number of backward masks. E.g., ""BkwdMask1"", ""BkwdMask2"", ""BkwdMask3"", and so on. You have to have at least one, and they all need to have consecutive numbering, even the first one."
-elsif numberOfBkwdMasks < numBkwdMasks
-	numBkwdMasks = numberOfBkwdMasks
+clicked = endPause: "#quit#", "Next options!-->", 2, 1
+if clicked == 1
+	removeObject: itemTable
+	exitScript: "No problem. Ciao!"
 endif
 
 if ratioOrDuration == 2
 	compressionType$ = "duration"
+	compressionValue = compressionValueDuration
 else
 	compressionType$ = "ratio"
+	compressionValue = compressionValueRatio
 endif
 
 beginPause: "Options 2/2"
 	comment: "COMPRESSION " + replace_regex$(compressionType$, ".*", "\U&",1)
-	comment: "Enter the compression " + compressionType$
+	if compressionType$ == "duration"
+		comment: "Enter the compression duration (" + timeUnit$ + ")"
+	else
+		comment: "Enter the compression ratio (0-1)"
+	endif
 	real: "CompressionValue", compressionValue
 
 	comment: "CONCATENATION RAMPING"
-	comment: "How much time should I ramp the joining"
+	comment: "How much time (" + timeUnit$ + ") should I ramp the joining"
 	comment: "ends of concatenants? Enter ""0"" for"
 	comment: "no ramping."
 	real: "CatRampDur", catRampDur
@@ -173,27 +190,102 @@ beginPause: "Options 2/2"
 	comment: "COMPONENT/STIMULUS SAMPLING RATE"
 	integer: "sr", sr
 
-	comment: "PSOLA MIN PITCH"
-	comment: "Min pitch for the duration compression"
-	comment: "resynthesis."
-	real: "MinResynthPitch", minResynthPitch
-
-	comment: "PSOLA MAX PITCH"
-	comment: "Max pitch for the duration compression"
-	comment: "resynthesis."
-	real: "MaxResynthPitch", maxResynthPitch
-
 	comment: "Thanks for the deets!"
-endPause: "Here we go...", 1
+clicked = endPause: "@extraMenu@", "#quit#", "Here we go!-->", 3, 2
+
+if clicked == 2
+	removeObject: itemTable
+	exitScript: "No'rries. Later, gator!"
+elsif clicked == 1
+	beginPause: "Extra options"
+		comment: "BACKWARD MASKS"
+		comment: "How many backward masks should I use for each item?"
+		natural: "NumberOfBkwdMasks", numBkwdMasks
+
+		comment: "PSOLA MIN PITCH"
+		comment: "Min pitch for the duration compression"
+		comment: "resynthesis."
+		real: "MinResynthPitch", minResynthPitch
+
+		comment: "PSOLA MAX PITCH"
+		comment: "Max pitch for the duration compression"
+		comment: "resynthesis."
+		real: "MaxResynthPitch", maxResynthPitch
+
+		comment: "TROUBLESHOOTING"
+		comment: "Write stims to stereo files?"
+		comment: "** Troubleshooting only **"
+		choice: "troubleShooting", 1
+			option: "No way! I want to use these stims"
+			option: "Yes; things're weird"
+
+		comment: "Got it. Thanks!"
+	clicked = endPause: "#quit#", "Here we go!-->", 2, 1
+	if clicked == 1
+		removeObject: itemTable
+		exitScript: "No'rries. Later, gator!"
+	endif
+
+	# If the user said more backward masks than we
+	# found in the trial table, complain.
+	if numberOfBkwdMasks > numBkwdMasks
+		exitScript: "You've specified " + numberOfBkwdMasks + " but I only find " + numBkwdMasks + " backward mask columns. Check that they are all of the form ""BkwdMaskX"" where X counts up the number of backward masks. E.g., ""BkwdMask1"", ""BkwdMask2"", ""BkwdMask3"", and so on. You have to have at least one, and they all need to have consecutive numbering, even the first one."
+	# but if they said to use fewer, fine
+	elsif numberOfBkwdMasks < numBkwdMasks
+		numBkwdMasks = numberOfBkwdMasks
+	endif
+
+	# Convert troubleShooting to a logical
+	# [1,2] --> [0,1]
+	troubleShooting = troubleShooting - 1
+endif
+
+
+# crd is the variable the ramping formula will
+# use in the "cat" procedure. It has to be in
+# seconds. catRampDur will still contain the
+# user-specified form for the data file.
+if timeUnit$ == "ms"
+	crd = catRampDur / 1000
+else
+	crd = catRampDur
+endif
+
+
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+# Data Header
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
 
 # Write the header to the output data file.
-header$ = "TrialTable" + tab$ + "Date" + tab$ + "Item" + tab$ + "ForwardMask" + tab$ + "Prime" + tab$ + "Target" + tab$ + "BackwardMasks" + tab$ + "PrimeOnset" + tab$ + "TargetOnset" + tab$ + "TargetOffset" + tab$ + "BwmDur" + tab$ + "StimDur" + tab$ + "CompressType" + tab$ + "CompressValue" + tab$ + "SamplingRate" + tab$ + "ComponentsResampled" + tab$ + "Intensity" + tab$ + "CatRampDur" + tab$ + "MinPitch" + tab$ + "MaxPitch" + tab$ + "Quietness" + tab$ + "IsTargetCovered" + tab$ + "PropClippedSamples"
+header$ = "TrialTable" + tab$ + "Date" + tab$ + "Item" + tab$ + "ForwardMask" + tab$ + "Prime" + tab$ + "Target" + tab$ + "BackwardMasks" + tab$ + "PrimeOnset" + tab$ + "TargetOnset" + tab$ + "TargetOffset" + tab$ + "BwmDur" + tab$ + "StimDur" + tab$ + "CompressType" + tab$ + "CompressValue" + tab$ + "SamplingRate" + tab$ + "Intensity" + tab$ + "CatRampDur" + tab$ + "MinPitch" + tab$ + "MaxPitch" + tab$ + "Quietness" + tab$ + "Notes"
 writeFileLine: outputDataFile$, header$
+
+
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+# Stimulus loop
+#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
 
 # Start stimulus loop
 for currentItem to nRows
-	# Log whether any components were resampled
-	componentsResampled = 0
+
+	#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+	# Initialize stim-level bits & bobs
+	#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+
+	# log which components are resampled
+	componentsResampled$ = ""
+
+	# keep track of whether any components had
+	# durations less than 2*crd
+	rampjam = 0
+
+	# keep notes for the stim if the script has any
+	notes$ = ""
+
+
+	#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+	# Process component sounds
+	#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
 
 	# Assign component names
 	selectObject: itemTable
@@ -206,24 +298,28 @@ for currentItem to nRows
 		bwmName$[bwmIndex] = Get value: currentItem, "BkwdMask" + string$(bwmIndex)
 	endfor
 
-	# Read component files and confirm mono
+	# Read component files and prep
 	fwm = Read from file: wavDir$ + "/" + fwmName$ + ".wav"
+	Rename: "fwm_" + fwmName$
 	@prepComponent: fwm
 	fwm = prepComponent.id
 	Rename: "fwm_" + fwmName$
 
 	prime = Read from file: wavDir$ + "/" + primeName$ + ".wav"
+	Rename: "prime_" + primeName$
 	@prepComponent: prime
 	prime = prepComponent.id
 	Rename: "prime_" + primeName$
 
 	target = Read from file: wavDir$ + "/" + targetName$ + ".wav"
+	Rename: "target_" + targetName$
 	@prepComponent: target
 	target = prepComponent.id
 	Rename: "target_" + targetName$
 
 	for bwmIndex to numBkwdMasks
 		bwm[bwmIndex] = Read from file: wavDir$ + "/" + bwmName$[bwmIndex] + ".wav"
+		Rename: "bwm" + string$(bwmIndex) + "_" + bwmName$[bwmIndex]
 		@prepComponent: bwm[bwmIndex]
 		bwm[bwmIndex] = prepComponent.id
 		Rename: "bwm" + string$(bwmIndex) + "_" + bwmName$[bwmIndex]
@@ -251,7 +347,7 @@ for currentItem to nRows
 		endfor
 	endif
 
-	# Forward mask: attenuate, compress, reverse
+	# forward mask: attenuate, compress, reverse
 	selectObject: fwm
 	db = Get intensity (dB)
 	Scale intensity: db - quietness
@@ -270,11 +366,11 @@ for currentItem to nRows
 	Rename: "prime_" + primeName$
 	primeDur = Get total duration
 
-	# No further manipulations for target
+	# target: no further manipulations
 	selectObject: target
 	targetDur = Get total duration
 
-	# Masks, attenuate, reverse, compress
+	# backward masks: attenuate, reverse, compress
 	bwmDur = 0
 	for bwmIndex to numBkwdMasks
 		selectObject: bwm[bwmIndex]
@@ -289,36 +385,66 @@ for currentItem to nRows
 	endfor
 
 	# Check whether target is fully masked
-	if bwmDur >= targetDur
-		isTargetCovered = 1
-	else
-		isTargetCovered = 0
+	if bwmDur < targetDur
+		notes$ = notes$ + "UNDERCLAD TARGET: target is not fully masked (" + fixed$(bwmDur/targetDur * 100, 1) + "% coverage); "
 	endif
 
-	# Concatenate the pieces
+	
+	#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+	# Combine components to form Voltron
+	#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+
+	# The strategy will be to concatenate
+	# fwm, prime, and target in one sound;
+	# cat the bwms in another (with a silent
+	# spacer on the front so the masks start
+	# at target onset), combine into a stereo
+	# object, and then flatten to mono.
+
+	# frontEnd, left channel
 	@cat: fwm, prime
 	frontEnd = cat.catted
 	Rename: "frontEnd"
+	# frontDur is the target onset time
 	frontDur = Get total duration
 	@cat: frontEnd, target
 	frontEnd = cat.catted
 	Rename: "frontWithTarget"
 
+	# backEnd, right channel
+	# a silence component is created as a spacer
+	# for the channel so that backward masking
+	# begins at target onset.
 	backEnd = Create Sound from formula: "silence", 1, 0, frontDur, sr, "0"
 	Rename: "backEnd0"
+	# Then we add the backward masks after that
+	# spacer in the back channel
 	for bwmIndex to numBkwdMasks
 		@cat: backEnd, bwm[bwmIndex]
 		backEnd = cat.catted
 		Rename: "backEnd" + string$(bwmIndex)
 	endfor 
 
-	# The final output stimulus
+	# The frontEnd and backEnd (with silent spacer)
+	# are combined as two channels of a
+	# stereo file:
+	#
+	#--fwm--#--prime--#--------target--------#
+	#-----silence-----#-bwm1-#-bwm2-#-bwm3-#-bwm4-#...etc.
+	#
+	# and then flattened to mono.
 	selectObject: frontEnd, backEnd
 	stimStereo = Combine to stereo
 	Rename: "stimStereo"
-	stim = Convert to mono
-	Rename: "stim"
-	removeObject: frontEnd, backEnd, stimStereo
+	if !troubleShooting
+		stim = Convert to mono
+		Rename: "stim"
+		removeObject: frontEnd, backEnd, stimStereo
+	else
+		stim = stimStereo
+		removeObject: frontEnd, backEnd
+		notes$ = notes$ + "**STEREO FOR TESTING**; "
+	endif
 	# Scale final intensity to global spec.
 	if normalizeTo
 		Scale intensity: normalizeTo
@@ -331,11 +457,44 @@ for currentItem to nRows
 	stimcopy = Copy: "stimcopy"
 	Formula: "if abs(self) >= 1 then 1 else 0 fi"
 	clipping = Get mean: 1, 0.0, 0.0
+	if clipping
+		notes$ = notes$ + "CLIPPING: output stim clipped (" + fixed$(clipping,4) + "); "
+	endif
 	removeObject: stimcopy
 	selectObject: stim
 
+
+	#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+	# Write stim sound file
+	#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+
 	# Write stim to WAV and data to the output file
 	nowarn Write to WAV file: outDir$ + "/" + itemName$ + ".wav"
+
+
+	#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+	# Prep data line
+	#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
+
+	# If any components were rampjammed, add to notes$
+	if rampjam
+		notes$ = notes$ + "RAMPJAM: components have dur < 2*catRampDur; "
+	endif
+
+	if componentsResampled$ != ""
+		componentsResampled$ = componentsResampled$ - ", "
+		notes$ = notes$ + "RESAMPLING: {" + componentsResampled$ + "} resampled on uptake; "
+	endif
+
+	#~#~#~#~#								#~#~#~#~#
+	#~#~#~#~# NOTES COMPLETE				#~#~#~#~#
+	#~#~#~#~# do not add notes beyond here	#~#~#~#~#
+	#~#~#~#~#								#~#~#~#~#
+
+	# having added all the notes, strip the final semi
+	if notes$ != ""
+		notes$ = notes$ - "; "
+	endif
 
 	# Record the names of the input trial table,
 	# item file and components
@@ -352,10 +511,14 @@ for currentItem to nRows
 	out$ = out$ - "; "
 
 	# Also add PrimeOnset, TargetOnset, TargetOffset, and BkwdMaskTotalDur
+	if timeUnit$ == "s"
 	out$ = out$ + tab$ + string$(fwmDur) + tab$ + string$(frontDur) + tab$ + string$(frontDur + targetDur) + tab$ + string$(bwmDur) + tab$ + string$(stimDur)
+	else
+		out$ = out$ + tab$ + string$(round(fwmDur*1000)) + tab$ + string$(round(frontDur*1000)) + tab$ + string$(round((frontDur + targetDur)*1000)) + tab$ + string$(round(bwmDur*1000)) + tab$ + string$(round(stimDur*1000))
+	endif
 
-	# Add CompressionType, CompressionValue, SR, ResampledComponents, Intensity, CatRampDur
-	out$ = out$ + tab$ + compressionType$ + tab$ + string$(compressionValue) + tab$ + string$(sr) + tab$ + string$(componentsResampled) + tab$ + string$(intensity) + tab$ + string$(catRampDur) + tab$ + string$(minResynthPitch) + tab$ + string$(maxResynthPitch) + tab$ + string$(quietness) + tab$ + string$(isTargetCovered) + tab$ + fixed$(clipping,4)
+	# Add CompressionType, CompressionValue, SR, Intensity, CatRampDur
+	out$ = out$ + tab$ + compressionType$ + tab$ + string$(compressionValue) + tab$ + string$(sr) + tab$ + string$(intensity) + tab$ + string$(catRampDur) + tab$ + string$(minResynthPitch) + tab$ + string$(maxResynthPitch) + tab$ + string$(quietness) + tab$ + notes$
 	# Write the line to the output file.
 	appendFileLine: outputDataFile$, out$
 	removeObject: stim
@@ -374,16 +537,18 @@ appendInfoLine: "...So long, and thanks for all the files!"
 # .first is the first sound object,
 # .second is the second
 # This proc depends on the global variable
-# "concatenationRampDuration" defined
+# "crd", derived from catRampDur
 # near the head of the file.
 # This proc removes the two component
 # objects. The concatenated sound
 # object ID is stored in .catted .
 procedure cat: .first, .second
 	selectObject: .second
+	
 	# Ramp the front end of .second
-	if catRampDur > 0
-		Formula: "if x < 'catRampDur' then self * x/'catRampDur' else self fi"
+	# Note: crd is the timeUnit$-converted catRampDur
+	if crd > 0
+		Formula: "if x < 'crd' then self * x/'crd' else self fi"
 	endif
 
 	# Seem to need this wonky way of
@@ -397,11 +562,18 @@ procedure cat: .first, .second
 	# guaranteed to come last.
 	.seccopy = Copy: "SecCopy"
 	Rename: "cat.seccopy"
+	.secdur = Get total duration
 	selectObject: .first
 	.firstdur = Get total duration
+	# if the ramp is larger than either component,
+	# add to notes.
+	if crd > .secdur/2 | crd > .firstdur/2
+		rampjam = 1
+	endif
+
 	# Ramp the back end of .first
-	if catRampDur > 0
-		Formula: "if x > '.firstdur'-'catRampDur' then self * ('.firstdur'-x)/'catRampDur' else self fi"
+	if crd > 0
+		Formula: "if x > '.firstdur'-'crd' then self * ('.firstdur'-x)/'crd' else self fi"
 	endif
 	plusObject: .seccopy
 	.catted = Concatenate
@@ -424,6 +596,10 @@ procedure compressDuration: .object
 	.origDur = Get total duration
 	if compressionType$ == "duration"
 		.ratio = compressionValue / .origDur
+		# the duration tier is in seconds
+		if timeUnit$ = "ms"
+			.ratio = .ratio / 1000
+		endif
 	elsif compressionType$ == "ratio"
 		.ratio = compressionValue
 	else
@@ -444,6 +620,7 @@ endproc
 # resulting object is .id
 procedure prepComponent: .id
 	selectObject: .id
+	.name$ = selected$: "Sound"
 	.numchan = Get number of channels
 	if .numchan > 1
 		.mono = Convert to mono
@@ -452,7 +629,7 @@ procedure prepComponent: .id
 	endif
 	.this_sr = Get sampling frequency
 	if .this_sr != sr
-		componentsResampled = componentsResampled + 1
+		componentsResampled$ = componentsResampled$ + .name$ + ", "
 		.resampled = .id
 		.id = Resample: sr, 50
 		removeObject: .resampled
