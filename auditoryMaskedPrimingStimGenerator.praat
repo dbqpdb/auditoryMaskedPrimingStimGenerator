@@ -1,5 +1,5 @@
 # auditoryMaskedPrimingStimGenerator.praat
-# V0.99, testing release
+# V0.999, testing release
 # This script is run within Praat, not from the command line.
 # It will prompt for
 #	@ an input tab-separated trial table
