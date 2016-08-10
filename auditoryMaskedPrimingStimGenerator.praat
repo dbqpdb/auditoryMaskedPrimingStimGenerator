@@ -195,8 +195,16 @@ beginPause: "Options 2/2"
 	comment: "COMPONENT/STIMULUS SAMPLING RATE"
 	integer: "sr", sr
 
+	comment: "OUTPUT TEXT-GRIDS?"
+	choice: "grids", 1
+		option: "Nope"
+		option: "Yep"
+
 	comment: "Thanks for the deets!"
 clicked = endPause: "@extraMenu@", "#quit#", "Here we go!-->", 3, 2
+
+# to boolean
+grids = grids - 1
 
 if clicked == 2
 	removeObject: itemTable
@@ -392,8 +400,8 @@ for currentItem to nRows
 		@compressDuration: bwm[bwmIndex], "mask"
 		bwm[bwmIndex] = compressDuration.compressed
 		Rename: "bwm" + string$(bwmIndex) + "_" + bwmName$[bwmIndex]
-		thisbwmDur = Get total duration
-		bwmDur = bwmDur + thisbwmDur
+		thisbwmDur[bwmIndex] = Get total duration
+		bwmDur = bwmDur + thisbwmDur[bwmIndex]
 	endfor
 
 	# Check whether target is fully masked
@@ -448,6 +456,34 @@ for currentItem to nRows
 	selectObject: frontEnd, backEnd
 	stimStereo = Combine to stereo
 	Rename: "stimStereo"
+
+	# Create text-grids if the option was selected
+	if grids
+		tg = To TextGrid: "FrontChannel BackChannel Notes", ""
+		# fwm
+		Insert boundary: 1, fwmDur
+		Set interval text: 1, 1, "fwm_" + fwmName$
+
+		# prime
+		Insert boundary: 1, frontDur
+		Set interval text: 1, 2, "prime_" + primeName$
+
+		# target
+		Insert boundary: 1, frontDur + targetDur
+		Set interval text: 1, 3, "target_" + targetName$
+
+		# bwms go in the right/"back" channel
+		now = frontDur
+		Insert boundary: 2, now
+		for bwmIndex to numBkwdMasks
+			now = now + thisbwmDur[bwmIndex]
+			Insert boundary: 2, now
+			Set interval text: 2, bwmIndex + 1, "bwm" + string$(bwmIndex) + "_" + bwmName$[bwmIndex]
+		endfor
+	endif
+
+	# reselect the stereo object
+	selectObject: stimStereo
 	if !troubleShooting
 		stim = Convert to mono
 		Rename: "stim"
@@ -483,7 +519,6 @@ for currentItem to nRows
 	# Write stim to WAV and data to the output file
 	nowarn Write to WAV file: outDir$ + "/" + itemName$ + ".wav"
 
-
 	#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
 	# Prep data line
 	#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
@@ -508,6 +543,14 @@ for currentItem to nRows
 		notes$ = notes$ - "; "
 	endif
 
+	# Write text-grid if that option applies
+	if grids
+		selectObject: tg
+		Set interval text: 3, 1, notes$
+		Save as text file: outDir$ + "/" + itemName$ + ".TextGrid"
+		removeObject: tg
+	endif
+
 	# Record the names of the input trial table,
 	# item file and components
 	out$ = itemTableFile$ + tab$ + date$() + tab$ + itemName$ + tab$ + fwmName$ + tab$ + primeName$ + tab$ + targetName$ + tab$
@@ -524,7 +567,7 @@ for currentItem to nRows
 
 	# Also add PrimeOnset, TargetOnset, TargetOffset, and BkwdMaskTotalDur
 	if timeUnit$ == "s"
-	out$ = out$ + tab$ + string$(fwmDur) + tab$ + string$(frontDur) + tab$ + string$(frontDur + targetDur) + tab$ + string$(bwmDur) + tab$ + string$(stimDur)
+		out$ = out$ + tab$ + string$(fwmDur) + tab$ + string$(frontDur) + tab$ + string$(frontDur + targetDur) + tab$ + string$(bwmDur) + tab$ + string$(stimDur)
 	else
 		out$ = out$ + tab$ + string$(round(fwmDur*1000)) + tab$ + string$(round(frontDur*1000)) + tab$ + string$(round((frontDur + targetDur)*1000)) + tab$ + string$(round(bwmDur*1000)) + tab$ + string$(round(stimDur*1000))
 	endif
