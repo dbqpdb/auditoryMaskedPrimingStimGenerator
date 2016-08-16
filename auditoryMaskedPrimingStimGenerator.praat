@@ -460,6 +460,7 @@ for currentItem to nRows
 	# and then flattened to mono.
 	selectObject: frontEnd, backEnd
 	stimStereo = Combine to stereo
+	stereoDur = Get total duration
 	Rename: "stimStereo"
 
 	# Create text-grids if the option was selected
@@ -479,12 +480,25 @@ for currentItem to nRows
 
 		# bwms go in the right/"back" channel
 		now = frontDur
+		# Insert first backEnd boundary at target onset
 		Insert boundary: 2, now
-		for bwmIndex to numBkwdMasks
+		# Now add durs of bwms, inserting ending boundaries
+		# for each one but the very last
+		# (placing a boundary at the very end of the
+		# recording may throw an error if there are
+		# rounding errors).
+		for bwmIndex to numBkwdMasks-1
 			now = now + thisbwmDur[bwmIndex]
 			Insert boundary: 2, now
 			Set interval text: 2, bwmIndex + 1, "bwm" + string$(bwmIndex) + "_" + bwmName$[bwmIndex]
 		endfor
+		# Assign last mask boundary if within the rec
+		# and label
+		now = now + thisbwmDur[numBkwdMasks]
+		if now < stereoDur
+			Insert boundary: 2, now
+		endif
+		Set interval text: 2, numBkwdMasks+1, "bwm" + string$(numBkwdMasks) + "_" + bwmName$[numBkwdMasks]
 	endif
 
 	# reselect the stereo object
