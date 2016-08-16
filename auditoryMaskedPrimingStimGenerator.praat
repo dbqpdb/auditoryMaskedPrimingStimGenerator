@@ -11,12 +11,12 @@
 
 # Original concoction implemented, with modifications,
 # from Dupoux & Kouider 2005 by Scott Jackson
-# Modified 2012 by KTS
-# Modified 2013 by SW
-# Modified 2016 by JG
+# Modified 2012 by Kevin Schluter
+# Modified 2013 by Samantha Wray
+# Modified 2016 by Jonathan Geary
 
 # Rewritten and documented Aug 2016
-# by db (brenner@ualberta.ca)
+# by Dan Brenner (brenner@ualberta.ca)
 
 # This software is provided with only the guarantee
 # that I've tried my best to create good code for
@@ -171,11 +171,6 @@ else
 	compressionType$ = "ratio"
 	compressionValue = compressionValueRatio
 endif
-# Set prime compression defaults the same
-# User can make masks and primes compress
-# differently in the "extra options" window
-primeCompressionType$ = compressionType$
-primeCompressionValue = compressionValue
 
 beginPause: "Options 2/2"
 	comment: "COMPRESSION " + replace_regex$(compressionType$, ".*", "\U&",1)
@@ -202,6 +197,12 @@ beginPause: "Options 2/2"
 
 	comment: "Thanks for the deets!"
 clicked = endPause: "@extraMenu@", "#quit#", "Here we go!-->", 3, 2
+# Set prime compression defaults the same
+# User can make masks and primes compress
+# differently in the "extra options" window
+primeRatioOrDuration = ratioOrDuration
+primeCompressionType$ = compressionType$
+primeCompressionValue = compressionValue
 
 # to boolean
 grids = grids - 1
@@ -242,8 +243,12 @@ elsif clicked == 1
 	endif
 	if primeRatioOrDuration == 2
 		primeCompressionType$ = "duration"
+		# the value is directly reassigned in option
+		# menu 3
 	else
 		primeCompressionType$ = "ratio"
+		# the value is directly reassigned in option
+		# menu 3
 	endif
 
 	# If the user said more backward masks than we
