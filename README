@@ -1,5 +1,5 @@
 # auditoryMaskedPrimingStimGenerator.praat
-# V0.999, testing release
+# V0.9999, testing release
 # This script is run within Praat, not from the command line.
 # It will prompt for
 #	@ an input tab-separated trial table
@@ -11,12 +11,12 @@
 
 # Original concoction implemented, with modifications,
 # from Dupoux & Kouider 2005 by Scott Jackson
-# Modified 2012 by KTS
-# Modified 2013 by SW
-# Modified 2016 by JG
+# Modified 2012 by Kevin Schluter
+# Modified 2013 by Samantha Wray
+# Modified 2016 by Jonathan Geary
 
 # Rewritten and documented Aug 2016
-# by db (brenner@ualberta.ca)
+# by Dan Brenner (brenner@ualberta.ca)
 
 # This software is provided with only the guarantee
 # that I've tried my best to create good code for
@@ -30,4 +30,3 @@
 # spiritual, or whathaveyou.
 # All derivative software must also bear this licensing.
 #~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
-
