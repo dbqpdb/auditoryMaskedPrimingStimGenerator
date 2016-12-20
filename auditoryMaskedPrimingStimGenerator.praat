@@ -1,5 +1,5 @@
 # auditoryMaskedPrimingStimGenerator.praat
-# V0.9999, testing release
+# V0.99999, testing release
 # This script is run within Praat, not from the command line.
 # It will prompt for
 #	@ an input tab-separated trial table
@@ -137,7 +137,7 @@ outDir$ = replace_regex$(outputDataFile$, "[^/]+$", "", 1)
 # Axe the User
 #~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#~#
 
-# Set defaults based on trial table columns, and then let the user over-ride using the form.
+# Set defaults based on trial table columns, and then let the user override using the form.
 beginPause: "Options 1/2"
 	comment: "FILE LOCATIONS: Input component sound files are expected"
 	comment: "in the directory of the trial table you selected,"
@@ -233,13 +233,13 @@ elsif clicked == 1
 		comment: "** Troubleshooting only **"
 		choice: "troubleShooting", 1
 			option: "No way! I want to use these stims"
-			option: "Yes; things're weird"
+			option: "Yes. Things're weird"
 
 		comment: "Got it. Thanks!"
 	clicked = endPause: "#quit#", "Here we go!-->", 2, 1
 	if clicked == 1
 		removeObject: itemTable
-		exitScript: "No'rries. Later, gator!"
+		exitScript: "And then it was dark."
 	endif
 	if primeRatioOrDuration == 2
 		primeCompressionType$ = "duration"
@@ -254,7 +254,7 @@ elsif clicked == 1
 	# If the user said more backward masks than we
 	# found in the trial table, complain.
 	if numberOfBkwdMasks > numBkwdMasks
-		exitScript: "You've specified " + numberOfBkwdMasks + " but I only find " + numBkwdMasks + " backward mask columns. Check that they are all of the form ""BkwdMaskX"" where X counts up the number of backward masks. E.g., ""BkwdMask1"", ""BkwdMask2"", ""BkwdMask3"", and so on. You have to have at least one, and they all need to have consecutive numbering, even the first one."
+		exitScript: "You've specified " + numberOfBkwdMasks + ", but I only find " + numBkwdMasks + " backward mask columns. Check that they are all of the form ""BkwdMaskX"" where X counts up the number of backward masks. E.g., ""BkwdMask1"", ""BkwdMask2"", ""BkwdMask3"", and so on. You have to have at least one, and they all need to have consecutive numbering, even the first one."
 	# but if they said to use fewer, fine
 	elsif numberOfBkwdMasks < numBkwdMasks
 		numBkwdMasks = numberOfBkwdMasks
@@ -522,7 +522,11 @@ for currentItem to nRows
 	# Check for clipping by hand, then choke
 	# the clipping warning.
 	stimcopy = Copy: "stimcopy"
-	Formula: "if abs(self) >= 1 then 1 else 0 fi"
+	# Praat always uses 16-bit quantization,
+	# which divides quanta as follows:
+	# 2^15 quanta below zero, one quantum
+	# for zero, and 2^15 - 1 above zero. So...
+	Formula: "if self >= 1 - 1/2^15 | self <= -1 then 1 else 0 fi"
 	clipping = Get mean: 1, 0.0, 0.0
 	if clipping
 		notes$ = notes$ + "CLIPPING: output stim clipped (" + fixed$(clipping,4) + "); "
@@ -617,6 +621,10 @@ appendInfoLine: "...So long, and thanks for all the files!"
 # objects. The concatenated sound
 # object ID is stored in .catted .
 procedure cat: .first, .second
+    # Freshly initialize the output object to avoid
+    # cross-call contamination.
+    .catted = ""
+
 	selectObject: .second
 	
 	# Ramp the front end of .second
