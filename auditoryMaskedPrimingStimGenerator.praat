@@ -623,7 +623,7 @@ appendInfoLine: "...So long, and thanks for all the files!"
 procedure cat: .first, .second
     # Freshly initialize the output object to avoid
     # cross-call contamination.
-    .catted = ""
+    .catted = undefined
 
 	selectObject: .second
 	
